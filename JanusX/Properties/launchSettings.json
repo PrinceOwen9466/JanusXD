@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "JanusXD.Shell": {
+      "commandName": "Project",
+      "commandLineArgs": "-s C:\\Users\\princ\\source\\repos\\Hexacom\\hexacom-vue -d TheBondSpace.pdf"
+    }
+  }
+}
