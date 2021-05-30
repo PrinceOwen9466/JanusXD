@@ -2,20 +2,16 @@
 using JanusXD.Shell.Extensions;
 using JanusXD.Shell.Models;
 using MAB.DotIgnore;
-using PdfSharp.Pdf;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using TheArtOfDev.HtmlRenderer.PdfSharp;
 
 namespace JanusXD.Shell
 {
     partial class Program
     {
-        
-
         static void Main(string[] args)
         {
             JanusContext context = new JanusContext();
