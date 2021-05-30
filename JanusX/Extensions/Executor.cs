@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Nysc.API.Extensions
+namespace JanusXD.Shell.Extensions
 {
     public static class Executor
     {

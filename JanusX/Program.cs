@@ -14,11 +14,13 @@ namespace JanusXD.Shell
 {
     partial class Program
     {
+        
+
         static void Main(string[] args)
         {
             JanusContext context = new JanusContext();
 
-            if (args.HasArgument(out string source, "--source", "-s"))
+            if (args.HasArgument(AppArgument.SourceDirectory, out string source))
             {
                 if (!Directory.Exists(source))
                     throw new Exception("Source directory does not appear to exist");
@@ -26,16 +28,44 @@ namespace JanusXD.Shell
                 context.SourceDirectory = source;
             }
 
-            if (args.HasArgument(out string destination, "--dest", "-d"))
-                context.DestinationFile = destination;
+            if (args.HasArgument(AppArgument.DestinationFolder, out string destination))
+                context.DestinationDirectory = destination;
 
-            if (args.HasArgument(out _, "--configure", "-c"))
+            if (args.HasArgument(AppArgument.Configure))
                 Configure();
 
-            if (args.HasArgument(out _, "--help", "-h"))
+            if (args.HasArgument(AppArgument.ProjectName, out string projectName))
+                context.ProjectName = projectName;
+
+            if (args.HasArgument(AppArgument.Help))
             {
                 DisplayInstructions();
                 return;
+            }
+
+            if (args.HasArgument(AppArgument.DisregardGitIgnore))
+                context.UseGitIgnore = false;
+
+            if (args.HasArgument(AppArgument.DisregardJanusIgnore))
+                context.UseJanusIgnore = false;
+
+            if (args.HasArgument(AppArgument.MaxPageSize, out string maxSize))
+            {
+                if (!long.TryParse(maxSize, out long size))
+                {
+                    Console.WriteLine("Max page size must be a number.");
+                    DisplayInstructions();
+                    return;
+                }
+
+                if (size <= 0)
+                {
+                    Console.WriteLine("Max page size must be a positive integer");
+                    DisplayInstructions();
+                    return;
+                }
+
+                context.MaxSize = size;
             }
 
             if (!context.IsValid())
@@ -57,20 +87,51 @@ namespace JanusXD.Shell
 
             Console.WriteLine("USAGE: ");
             Console.WriteLine("");
-            Console.WriteLine("janusxd --source /path/to/source --dest /path/to/pdf");
+            Console.WriteLine("janusxd --source /path/to/source/code --dest /output/folder");
 
-            Console.WriteLine("--source, -s\t\tSource Directory");
-            Console.WriteLine("--dest, -d\t\tDestination PDF File");
-            Console.WriteLine("--configure, -c\t\tInteractive Configuration");
-            Console.WriteLine("--disregard-gitignore\t\tDisregard git ignore files during generation");
-            Console.WriteLine("--ignore, -i\t\tCollection of files and extensions that should be ignored. Usage: \"*.sln, *.csproj, file/to/ignore.ig\"");
-            Console.WriteLine("--help, -h\t\tDisplay instructions");
-            Console.WriteLine("");
+            for (int i = 0; i < AppArgument.All.Length; i++)
+                Console.WriteLine(AppArgument.All[i]);
+        }
+
+        static bool PrepareDirectory(JanusContext context)
+        {
+            if (string.IsNullOrWhiteSpace(context.ProjectName))
+                context.ProjectName = Path.GetDirectoryName(context.SourceDirectory);
+
+            string workDir = "";
+
+            try
+            {
+                workDir = Path.Combine(AppBase.DATA_DIR, context.ProjectName);
+                IOExtensions.CreateDirectories(workDir);
+            }
+            catch { }
+
+            int attempts = 0;
+            while (!Directory.Exists(workDir))
+            {
+                if (++attempts > 3)
+                {
+                    return false;
+                }
+
+                workDir = Path.Combine(AppBase.DATA_DIR, Path.GetRandomFileName());
+                IOExtensions.CloneDirectory(AppBase.WWWROOT, workDir);
+            }
+
+            context.WorkDirectory = workDir;
+            return true;
         }
 
         static void Generate(JanusContext context)
         {
             var spinner = ConsoleSpinner.Instance;
+
+            if (!PrepareDirectory(context))
+            {
+                Console.WriteLine("Failed to setup project directory. Please run JanusXD with elevated permissions to give it another try.");
+                return;
+            }
 
             Console.WriteLine("================================================");
             Console.WriteLine("JanusXD Source Code Generation Session");
@@ -78,15 +139,20 @@ namespace JanusXD.Shell
             Console.WriteLine();
             Console.WriteLine();
 
-            spinner.Activate(message: "Generating Document", delay: 500);
-            
+            spinner.Activate(message: "Generating Document", delay: 100, type: SpinnerType.Cross);
 
-            HtmlDocument document = new HtmlDocument();
-            string htmlPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "PageTemplate.html");
+            //IOExtensions.
 
-            document.LoadHtml(File.ReadAllText(htmlPath));
-            // DocumentNode.SelectSingleNode("//body").InnerText
-            var body = document.DocumentNode.SelectSingleNode("//body");
+            HtmlDocument document = null; HtmlNode body = null;
+            Action PrepareDocument = () =>
+            {
+                document = new HtmlDocument();
+                string htmlPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "PageTemplate.html");
+                document.LoadHtml(File.ReadAllText(htmlPath));
+                body = document.DocumentNode.SelectSingleNode("//body");
+            };
+
+            PrepareDocument();
 
             bool configuredIgnore = false;
             string directory = context.SourceDirectory;
@@ -95,12 +161,12 @@ namespace JanusXD.Shell
             var defaultList = new IgnoreList();
             defaultList.AddRule("/.git");
 
-            int count = 0;
+            string html = document.DocumentNode.OuterHtml;
 
             foreach (var file in DirectoryHelper.FindAccessibleFiles(context.SourceDirectory, "*", true, null, null))
             {   
                 string fileName = Path.GetFileName(file);
-                if (fileName == ".gitignore") continue;
+                if (fileName == JanusContext.GitIgnore || fileName == JanusContext.JanusIgnore) continue;
 
                 string relative = Path.GetRelativePath(context.SourceDirectory, file);
                 if (ignoreCollection.Any(x => x.IsIgnored(relative, false)))
@@ -112,12 +178,14 @@ namespace JanusXD.Shell
                     directory = newDir;
                     configuredIgnore = true;
 
-                    var ignoreFiles = Directory.EnumerateFiles(directory, ".gitignore");
                     
+                    var ignoreFiles = DirectoryHelper.FindAccessibleFiles(context.SourceDirectory,
+                        context.IgnoreFilePattern, false, null, null);
 
                     if (ignoreFiles.Any())
                     {
-                        ignoreCollection.Clear();
+                        if (ignoreFiles.Count() == 1 && !ignoreFiles.Any(x => x == JanusContext.JanusIgnore))
+                            ignoreCollection.Clear();
 
                         ignoreCollection.Add(defaultList);
 
@@ -129,17 +197,22 @@ namespace JanusXD.Shell
                 if (ignoreCollection.Any(x => x.IsIgnored(relative, false)))
                     continue;
 
-                spinner.SetMessage($"Generating for: {relative}");
+                spinner.SetMessage($"Reading: {relative}");
 
                 HtmlNode section = document.CreateElement("section");
-                section.AddClass("flex");
+                section.AddClass("flex flex-col mx-10");
                 body.AppendChild(section);
 
-                HtmlNode heading = document.CreateElement("h2");
+                HtmlNode heading = document.CreateElement("h3");
                 heading.InnerHtml = Path.GetFileName(file);
-                heading.AddClass("ml-auto");
+                heading.AddClass("text-xl text-sans my-0 mt-8");
+
+                HtmlNode subHeading = document.CreateElement("h6");
+                subHeading.InnerHtml = relative;
+                subHeading.AddClass("text-xs opacity-50 text-sans -mt-1 mb-1 text-primary");
 
                 section.AppendChild(heading);
+                section.AppendChild(subHeading);
 
                 HtmlNode pre = document.CreateElement("pre");
                 pre.AddClass("prettyprint");
@@ -152,28 +225,28 @@ namespace JanusXD.Shell
                 inner.InnerHtml = File.ReadAllText(file);
 
                 code.AppendChild(inner);
+
+                html = document.DocumentNode.OuterHtml;
+
+                if (html.Length * sizeof(char) > 5120)
+                {
+
+                }
             }
 
-            //Directory.GetFiles(,)
 
+            html = document.DocumentNode.OuterHtml;
+            File.WriteAllText("wwwroot\\Sample.html", html);
 
-            //string temp = Path.GetTempFileName();
-            //document.Save(File.OpenWrite(temp));
-
-            string html = document.DocumentNode.OuterHtml;
-            File.WriteAllText("Sample.html", html);
-
-            string root = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", html);
-
-
-            //PdfGenerator.
-            PdfDocument pdf = PdfGenerator.GeneratePdf(html, PdfSharp.PageSize.A4, 20);
-            pdf.Save(File.Create(context.DestinationFile), true);
-
-            string fullPath = Path.GetFullPath(context.DestinationFile);
+            string fullPath = Path.GetFullPath(context.DestinationDirectory);
             Console.WriteLine($"Successfully generated document ({fullPath})");
 
             spinner.Deactivate();
         }
+
+        //static void RenderAndPrint(JanusContext context)
+        //{
+
+        //}
     }
 }
