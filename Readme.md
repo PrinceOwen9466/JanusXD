@@ -1,7 +1,13 @@
 ## JanusXD
+![Logo](/JanusXD/wwwroot/images/logo.png)
+
+
 Source Code to HTML\PDF Generation Tool
 
+
+
 * Converts all files in your source code directory to a single or multiple HTML file(s)
+* Ignores unnecessary files specified in `.gitignore` and `.janusignore` files 
 
 
 **Help Instructions**
@@ -20,7 +26,7 @@ Source Code to HTML\PDF Generation Tool
 **TODO**
 * Title and Table of Contents Generation
 * Automatic configuration to different [Code Prettify][0] styles
-* Support for other syntax highlight libraries
+* Support for other syntax highlighting libraries
 * Direct rendering and conversion to PDF
 
 [0]: <https://github.com/googlearchive/code-prettify>
