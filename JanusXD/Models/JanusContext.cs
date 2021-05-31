@@ -11,8 +11,10 @@ namespace JanusXD.Shell.Models
         public static readonly string GitIgnore = ".gitignore";
         public static readonly string JanusIgnore = ".janusignore";
 
-        public string ProjectName { get; set; }
+        public int Page { get; set; } = 1;
+        public string Content { get; set; } = "";
 
+        public string ProjectName { get; set; }
         public string WorkDirectory { get; set; }
 
         public string SourceDirectory { get; set; }

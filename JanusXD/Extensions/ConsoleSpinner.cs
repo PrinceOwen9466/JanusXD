@@ -109,7 +109,6 @@ namespace JanusXD.Shell.Extensions
 
 
                 string output = "";
-                //Console
                 if (!string.IsNullOrWhiteSpace(Message))
                     output = $"{Message} ";
 
@@ -128,16 +127,6 @@ namespace JanusXD.Shell.Extensions
                 Thread.Sleep(Delay);
             }
         }
-
-
-        //public void Update()
-        //{
-        //    Console.Write(Frames[Current]);
-        //    Console.SetCursorPosition(CursorX, CursorY);
-
-        //    if (++Current >= Frames.Length)
-        //        Current = 0;
-        //}
         #endregion
 
     }

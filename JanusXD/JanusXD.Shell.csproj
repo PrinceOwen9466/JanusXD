@@ -6,6 +6,12 @@
     <AssemblyName>JanusXD</AssemblyName>
     <RootNamespace>JanusXD.Shell</RootNamespace>
     <ApplicationIcon>wwwroot\images\logo.ico</ApplicationIcon>
+
+	<PublishSingleFile>true</PublishSingleFile>
+	<SelfContained>true</SelfContained>
+	<RuntimeIdentifier>win-x64</RuntimeIdentifier>
+	<PublishTrimmed>true</PublishTrimmed>
+	<PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
   <ItemGroup>

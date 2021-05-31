@@ -52,7 +52,7 @@ namespace JanusXD.Shell.Models
         public static AppArgument DisregardGitIgnore { get; } = new AppArgument("Don't ignore paths included in .gitignore files", "disregard-git-ignore", "dg");
         public static AppArgument DisregardJanusIgnore { get; } = new AppArgument("Don't ignore paths included in .janusignore files", "disregard-janus-ignore", "dj");
 
-        public static AppArgument MaxPageSize { get; } = new AppArgument("Maximum size (in bytes) of each html document", "max-size");
+        public static AppArgument MaxPageSize { get; } = new AppArgument("Maximum size (in MB) of each html document", "max-size");
 
         public static AppArgument[] All { get; } = new AppArgument[]
         {

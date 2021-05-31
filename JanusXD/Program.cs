@@ -92,14 +92,14 @@ namespace JanusXD.Shell
         static bool PrepareDirectory(JanusContext context)
         {
             if (string.IsNullOrWhiteSpace(context.ProjectName))
-                context.ProjectName = Path.GetDirectoryName(context.SourceDirectory);
+                context.ProjectName = Path.GetDirectoryName(context.SourceDirectory).Split("\\").LastOrDefault();
 
             string workDir = "";
 
             try
             {
                 workDir = Path.Combine(AppBase.DATA_DIR, context.ProjectName);
-                IOExtensions.CreateDirectories(workDir);
+                IOExtensions.CloneDirectory(AppBase.WWWROOT, workDir);
             }
             catch { }
 
@@ -114,6 +114,9 @@ namespace JanusXD.Shell
                 workDir = Path.Combine(AppBase.DATA_DIR, Path.GetRandomFileName());
                 IOExtensions.CloneDirectory(AppBase.WWWROOT, workDir);
             }
+
+            string template = Path.Combine(workDir, "PageTemplate.html");
+            IOExtensions.TryDelete(template, out _);
 
             context.WorkDirectory = workDir;
             return true;
@@ -143,9 +146,18 @@ namespace JanusXD.Shell
             Action PrepareDocument = () =>
             {
                 document = new HtmlDocument();
-                string htmlPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "PageTemplate.html");
+                string htmlPath = Path.Combine(AppBase.WWWROOT, "PageTemplate.html");
                 document.LoadHtml(File.ReadAllText(htmlPath));
                 body = document.DocumentNode.SelectSingleNode("//body");
+            };
+
+            Action SaveDocument = () =>
+            {
+                string outputPath = Path.Combine(context.WorkDirectory, $"Page-{context.Page}.html");
+                using (var stream = File.CreateText(outputPath))
+                    stream.Write(context.Content);
+
+                context.Page++;
             };
 
             PrepareDocument();
@@ -156,8 +168,6 @@ namespace JanusXD.Shell
             
             var defaultList = new IgnoreList();
             defaultList.AddRule("/.git");
-
-            string html = document.DocumentNode.OuterHtml;
 
             foreach (var file in DirectoryHelper.FindAccessibleFiles(context.SourceDirectory, "*", true, null, null))
             {   
@@ -197,7 +207,6 @@ namespace JanusXD.Shell
 
                 HtmlNode section = document.CreateElement("section");
                 section.AddClass("flex flex-col mx-10");
-                body.AppendChild(section);
 
                 HtmlNode heading = document.CreateElement("h3");
                 heading.InnerHtml = Path.GetFileName(file);
@@ -222,20 +231,31 @@ namespace JanusXD.Shell
 
                 code.AppendChild(inner);
 
-                html = document.DocumentNode.OuterHtml;
+                string node = section.OuterHtml;
 
-                if (html.Length * sizeof(char) > 5120)
+                int proposedSize = (context.Content.Length + node.Length) * sizeof(char);
+                long maxSize = context.MaxSize * 1000000;
+
+                if (proposedSize > maxSize && context.Content.Length >= 0)
                 {
-
+                    SaveDocument();
+                    PrepareDocument();
                 }
+
+                body.AppendChild(section);
+                context.Content = document.DocumentNode.OuterHtml;
             }
 
-
-            html = document.DocumentNode.OuterHtml;
-            File.WriteAllText("wwwroot\\Sample.html", html);
+            SaveDocument();
 
             string fullPath = Path.GetFullPath(context.DestinationDirectory);
-            Console.WriteLine($"Successfully generated document ({fullPath})");
+
+            spinner.SetMessage("Finalizing generation. Please wait");
+            
+            IOExtensions.CloneDirectory(context.WorkDirectory, context.DestinationDirectory, true);
+            IOExtensions.ClearDirectory(context.WorkDirectory, true);
+
+            Console.WriteLine($"Successfully generated to directory => ({fullPath})");
 
             spinner.Deactivate();
         }

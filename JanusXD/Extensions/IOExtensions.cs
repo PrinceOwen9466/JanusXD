@@ -122,6 +122,11 @@ namespace JanusXD.Shell.Extensions
                 }
         }
 
+        /// <summary>
+        /// Pretty dangerous function. Use with CAUTION. Deletes all files in a directory
+        /// </summary>
+        /// <param name="directory"></param>
+        /// <param name="removeDirectory"></param>
         public static void ClearDirectory(string directory, bool removeDirectory = false)
         {
             if (string.IsNullOrWhiteSpace(directory)) return;
@@ -129,7 +134,7 @@ namespace JanusXD.Shell.Extensions
             foreach (var d in Directory.EnumerateDirectories(directory))
                 ClearDirectory(d, true);
 
-            foreach (var file in Directory.EnumerateFiles(directory, "*"))
+            foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
                 try { File.Delete(file); }
                 catch (Exception e) { Logger.Error("Failed to delete {0}\n", file, e); }
 
@@ -140,7 +145,7 @@ namespace JanusXD.Shell.Extensions
 
         public static void CloneDirectory(string directory, string destination, bool overwrite = false, bool logErrors = true)
         {
-            foreach (var source in Directory.EnumerateFiles(directory))
+            foreach (var source in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
             {
                 string relative = Path.GetRelativePath(directory, source);
                 string dest = Path.Combine(destination, relative);

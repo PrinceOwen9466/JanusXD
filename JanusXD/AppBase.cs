@@ -10,8 +10,7 @@ namespace JanusXD.Shell
 {
     public static class AppBase
     {
-        public static string PRODUCT_NAME = "Hexacom API";
-        public static string SHORT_PRODUCT_NAME = "Hexacom";
+        public static string PRODUCT_NAME = "JanusXD";
         public static string PRODUCT_VERSION = "1";
         public static string FULL_PRODUCT_NAME => $"{PRODUCT_NAME} {PRODUCT_VERSION}";
         public static string AUTHOR = "Prince Owen";
@@ -21,7 +20,7 @@ namespace JanusXD.Shell
         public readonly static string BASE_DIR = Directory.GetCurrentDirectory();
         public readonly static string WORK_DIR = Path.Combine(SYSTEM_DATA_DIR, PRODUCT_NAME + ".Live");
         public readonly static string DATA_DIR = Path.Combine(WORK_DIR, "Data");
-        public readonly static string WWWROOT = Path.Combine(SYSTEM_DATA_DIR, "wwwroot");
+        public readonly static string WWWROOT = Path.Combine(BASE_DIR, "wwwroot");
 
         static AppBase()
         {
